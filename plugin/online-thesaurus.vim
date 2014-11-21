@@ -13,8 +13,22 @@ set cpo&vim
 
 let s:path = expand("<sfile>:p:h")
 
+function! s:FindLastWindow()
+    if exists('g:online_thesaurus_window')
+        return bufwinnr(g:online_thesaurus_window)
+    endif
+
+    return -1
+endfunction
+
 function! s:Lookup(word)
-    silent keepalt belowright split thesaurus
+    let winnr = s:FindLastWindow()
+    if winnr >= 0
+        execute winnr . 'wincmd w'
+    else
+        silent keepalt belowright split thesaurus
+        let g:online_thesaurus_window = bufnr('%')
+    endif
     setlocal noswapfile nobuflisted nospell nowrap modifiable
     setlocal buftype=nofile bufhidden=hide
     1,$d
