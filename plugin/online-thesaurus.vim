@@ -11,27 +11,21 @@ let g:loaded_online_thesaurus = 1
 let s:save_cpo = &cpo
 set cpo&vim
 let s:save_shell = &shell
+let s:script_dir = expand("<sfile>:p:h")
+let s:script_name = "thesaurus-lookup"
 if has("win32")
-    let cpu_arch      = system('echo %PROCESSOR_ARCHITECTURE%')
-    let s:script_name = "\\thesaurus-lookup.sh"
     if isdirectory('C:\\Program Files (x86)\\Git')
-        let &shell        = 'C:\\Program Files (x86)\\Git\\bin\\bash.exe'
         let s:sort        = "C:\\Program Files (x86)\\Git\\bin\\sort.exe"
     elseif isdirectory('C:\\Program Files\\Git')
-        let &shell        = 'C:\\Program Files\\Git\\bin\\bash.exe'
         let s:sort        = "C:\\Program Files\\Git\\bin\\sort.exe"
-    else
-        echoerr 'vim-thesaurus: Cannot find git installation.'
     endif
 else
     let &shell        = '/bin/sh'
-    let s:script_name = "/thesaurus-lookup.sh"
+    let s:script_name = shellescape(s:script_dir ."/thesaurus-lookup.sh")
     silent let s:sort = system('if command -v /bin/sort > /dev/null; then'
             \ . ' printf /bin/sort;'
             \ . ' else printf sort; fi')
 endif
-
-let s:path = shellescape(expand("<sfile>:p:h") . s:script_name)
 
 function! s:Trim(input_string)
     let l:str = substitute(a:input_string, '[\r\n]', '', '')
@@ -54,8 +48,15 @@ function! s:Lookup(word)
     exec "silent file thesaurus:\\ " . l:word_fname
     1,$d
     echo "Requesting thesaurus.com to look up \"" . l:word . "\"..."
-    exec ":silent 0r !" . s:path . " " . shellescape(l:word)
-    exec ':silent! g/^relevant /,/^$/-!' . s:sort . " -t ' ' -k 2nr -k 3"
+    " Jump to where script is located so we don't need to pass a path to
+    " shell.
+    exec 'cd '. s:script_dir
+    exec ":silent 0r !" . s:script_name . " " . shellescape(l:word)
+    cd -
+    if exists("s:sort")
+        " I think this is trying to sort by relevance.
+        exec ':silent! g/^relevant /,/^$/-!' . s:sort . " -t ' ' -k 2nr -k 3"
+    endif
     if has("win32")
         silent! %s/\r//g
         silent! normal! gg5dd
@@ -64,6 +65,10 @@ function! s:Lookup(word)
     silent! g/^\%(Syn\|Ant\)onyms:/+;/^$/-2s/$\n/, /
     silent g/^\%(Syn\|Ant\)onyms:/ normal! JVgq
     silent g/^Antonyms:/-d
+    if !exists("s:sort")
+        " We didn't clean these up above, so they're left around.
+        exec 'silent! normal! gg"_dap'
+    endif
     0
     silent 1d
     exec 'resize ' . (line('$') - 1)
