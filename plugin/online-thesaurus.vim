@@ -19,7 +19,7 @@ function! s:Lookup(word)
     setlocal buftype=nofile bufhidden=hide
     1,$d
     echo "Requesting thesaurus.com to look up the word \"" . a:word . "\"..."
-    exec ":silent 0r !" . s:path . "/thesaurus-lookup.sh " . a:word
+    exec "silent 0r !" . s:path . "/thesaurus-lookup " . a:word
     normal! Vgqgg
     exec 'resize ' . (line('$') - 1)
     setlocal nomodifiable filetype=thesaurus
